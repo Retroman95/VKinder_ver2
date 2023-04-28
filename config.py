@@ -2,12 +2,12 @@ user_token = "" #access_token пользователя
 
 group_token = "" #токен сообщества
 
-host = ""
+host = "127.0.0.1"
 
-database =""
+database = "Vkinder_db"
 
-user= ""
+user = "postgres"
 
-password = ""
+password = "12345678"
 
-port = ""
+port = "5432"
