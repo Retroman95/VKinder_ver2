@@ -73,7 +73,7 @@ class VKBot:
                         result = self.input_age(user_id, age)
                         if result:
                             return result
-            time.sleep(0.1)  # добавляем небольшую паузу между вызовами метода listen()
+            datetime.sleep(0.1)  # добавляем небольшую паузу между вызовами метода listen()
 
     # получение города для поиска
     def get_city(self, user_id):
@@ -110,7 +110,7 @@ class VKBot:
                             return f' в городе {city_title}'
                         else:
                             return 'Не удалось найти указанный город'
-            time.sleep(0.1)  # добавляем небольшую паузу между вызовами метода listen()
+            datetime.sleep(0.1)  # добавляем небольшую паузу между вызовами метода listen()
 
      # в зависимости от пола пользователя ищем людей противоположного пола
     def get_sex(self, user_id):
@@ -137,29 +137,28 @@ class VKBot:
             age_from=age_from,
             age_to=age_to,
             has_photo=1,
-            count=10,
+            count=30,
             offset=offset,
             fields="screen_name"
         )
+        if "items" not in res:
+            raise Exception("API Error: 'items' key not found in response")
         vk_ids = [person["id"] for person in res["items"] if
                   not person["is_closed"] and ("city" not in person or person["city"]["id"] == city_id)]
-        new_vk_ids = exclude_duplicates(vk_ids)
-        if new_vk_ids:
-            insert_data_search(new_vk_ids)
-            list_found_persons = [f"vk.com/id{vk_id}" for vk_id in new_vk_ids]
-        else:
-            if offset is None:
-                offset = 0
-            else:
-                offset += 10
+        insert_data_search(vk_ids)
+        list_found_persons = [f"vk.com/id{vk_id}" for vk_id in vk_ids]
+        if not list_found_persons and offset is not None:
+            offset += 30
             return self.users_search(offset=offset)
         return list_found_persons
 
     # сдвигаем offset для нового списка пользователей
     def move_offset(self):
         global offset
-        offset = 0
-        offset += 30
+        try:
+            offset += 30
+        except NameError:
+            offset = 0
         return offset
 
     # возвращает 3 лучших(лайки+комменты) фото найденного пользователя
@@ -170,12 +169,12 @@ class VKBot:
             extended=1,
             count=30
         )
-
+        if "items" not in photos:
+            raise Exception("API Error: 'items' key not found in response")
         top_photos = sorted(photos["items"], key=lambda x: x['likes']['count'] + x['comments']['count'], reverse=True)[
                      :3]
         photo_ids = [f"{user_id}_{photo['id']}" for photo in top_photos]
         attachments = [f"photo{photo_id}" for photo_id in photo_ids]
-
         return attachments
 
 
