@@ -25,6 +25,15 @@ def insert_data_search(new_vk_ids):
         unique_vk_ids = [result[0] for result in cursor.fetchall()]
         insert_query = "INSERT INTO seen_users(vk_id) VALUES (%s)"
         cursor.executemany(insert_query, [(vk_id,) for vk_id in unique_vk_ids])
+        insert_unviewed_profiles_to_seen_users_table()
+
+def insert_unviewed_profiles_to_seen_users_table():
+    with conn.cursor() as cursor:
+        select_query = "SELECT DISTINCT vk_id FROM temp_results WHERE vk_id NOT IN (SELECT vk_id FROM seen_users) AND viewed = FALSE"
+        cursor.execute(select_query)
+        unique_vk_ids = [result[0] for result in cursor.fetchall()]
+        insert_query = "INSERT INTO seen_users(vk_id) VALUES (%s)"
+        cursor.executemany(insert_query, [(vk_id,) for vk_id in unique_vk_ids])
 
 
 # запрашиваем список id найденных пользователей
