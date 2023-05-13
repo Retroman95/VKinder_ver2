@@ -18,20 +18,13 @@ def insert_data_search(new_vk_ids):
     with conn.cursor() as cursor:
         delete_query = "DELETE FROM temp_results"
         cursor.execute(delete_query)
-        insert_query = "INSERT INTO temp_results(vk_id) VALUES (%s)"
+        insert_query = "INSERT INTO temp_results(vk_id, viewed) VALUES (%s, FALSE) ON CONFLICT (vk_id) DO UPDATE SET viewed=FALSE"
         cursor.executemany(insert_query, [(vk_id,) for vk_id in new_vk_ids])
-        select_query = "SELECT DISTINCT vk_id FROM temp_results WHERE vk_id NOT IN (SELECT vk_id FROM seen_users)"
+        select_query = "SELECT DISTINCT tr.vk_id FROM temp_results tr WHERE NOT EXISTS (SELECT 1 FROM seen_users su WHERE su.vk_id = tr.vk_id)"
         cursor.execute(select_query)
         unique_vk_ids = [result[0] for result in cursor.fetchall()]
-        insert_query = "INSERT INTO seen_users(vk_id) VALUES (%s)"
-        cursor.executemany(insert_query, [(vk_id,) for vk_id in unique_vk_ids])
-        insert_unviewed_profiles_to_seen_users_table()
-
-def insert_unviewed_profiles_to_seen_users_table():
-    with conn.cursor() as cursor:
-        select_query = "SELECT DISTINCT vk_id FROM temp_results WHERE vk_id NOT IN (SELECT vk_id FROM seen_users) AND viewed = FALSE"
-        cursor.execute(select_query)
-        unique_vk_ids = [result[0] for result in cursor.fetchall()]
+        update_query = "UPDATE temp_results SET viewed = TRUE WHERE vk_id = ANY (%s)"
+        cursor.execute(update_query, (unique_vk_ids,))
         insert_query = "INSERT INTO seen_users(vk_id) VALUES (%s)"
         cursor.executemany(insert_query, [(vk_id,) for vk_id in unique_vk_ids])
 
@@ -47,12 +40,12 @@ def get_seen_users():
         seen_users = cursor.fetchall()
         return seen_users
 
-# удаляем таблицу
-def drop_users():
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """DROP TABLE IF EXISTS seen_users CASCADE;"""
-        )
+# # удаляем таблицу
+# def drop_users():
+#     with conn.cursor() as cursor:
+#         cursor.execute(
+#             """DROP TABLE IF EXISTS seen_users CASCADE;"""
+#         )
 
 def create_database():
     with conn.cursor() as cursor:
@@ -80,7 +73,8 @@ def create_database():
             # создаем таблицу temp_results, если она не существует
             cursor.execute("""
                 CREATE TABLE temp_results (
-                    vk_id BIGINT PRIMARY KEY
+                    vk_id BIGINT PRIMARY KEY,
+                    viewed BOOLEAN NOT NULL DEFAULT FALSE
                 )
             """)
             conn.commit()
