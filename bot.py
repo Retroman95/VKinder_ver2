@@ -129,22 +129,25 @@ class VKBot:
     def users_search(self, offset=None):
         global list_found_persons
         list_found_persons = []
-        res = self.vk_user_got_api.users.search(
-            city=city_id,
-            hometown=city_title,
-            sex=sex,
-            status=1,
-            age_from=age_from,
-            age_to=age_to,
-            has_photo=1,
-            count=30,
-            offset=offset,
-            fields="screen_name"
-        )
-        if "items" not in res:
-            raise Exception("API Error: 'items' key not found in response")
-        vk_ids = [person["id"] for person in res["items"] if
-                  not person["is_closed"] and ("city" not in person or person["city"]["id"] == city_id)]
+        try:
+            res = self.vk_user_got_api.users.search(
+                city=city_id,
+                hometown=city_title,
+                sex=sex,
+                status=1,
+                age_from=age_from,
+                age_to=age_to,
+                has_photo=1,
+                count=30,
+                offset=offset,
+                fields="screen_name"
+            )
+            if "items" not in res:
+                raise KeyError("API Error: 'items' key not found in response")
+            vk_ids = [person["id"] for person in res["items"] if
+                      not person["is_closed"] and ("city" not in person or person["city"]["id"] == city_id)]
+        except KeyError:
+            vk_ids = []
         insert_data_search(vk_ids)
         list_found_persons = [f"vk.com/id{vk_id}" for vk_id in vk_ids]
         if not list_found_persons and offset is not None:
@@ -163,20 +166,22 @@ class VKBot:
 
     # возвращает 3 лучших(лайки+комменты) фото найденного пользователя
     def get_photo(self, user_id):
-        photos = self.vk_user_got_api.photos.get(
-            owner_id=user_id,
-            album_id='profile',
-            extended=1,
-            count=30
-        )
-        if "items" not in photos:
-            raise Exception("API Error: 'items' key not found in response")
-        top_photos = sorted(photos["items"], key=lambda x: x['likes']['count'] + x['comments']['count'], reverse=True)[
-                     :3]
-        photo_ids = [f"{user_id}_{photo['id']}" for photo in top_photos]
-        attachments = [f"photo{photo_id}" for photo_id in photo_ids]
+        try:
+            photos = self.vk_user_got_api.photos.get(
+                owner_id=user_id,
+                album_id='profile',
+                extended=1,
+                count=30
+            )
+            if "items" not in photos:
+                raise KeyError("API Error: 'items' key not found in response")
+            top_photos = sorted(photos["items"], key=lambda x: x['likes']['count'] + x['comments']['count'],
+                                reverse=True)[:3]
+            photo_ids = [f"{user_id}_{photo['id']}" for photo in top_photos]
+            attachments = [f"photo{photo_id}" for photo_id in photo_ids]
+        except KeyError:
+            attachments = []
         return attachments
-
 
     # запрашиваем из бд id найденных пользователей
     def get_profile_id(self):
